@@ -259,12 +259,13 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
     "    type=\"dynamic\"\n"                                                   \
     "    xmlns=\"urn:mpeg:dash:schema:mpd:2011\"\n"                            \
     "    availabilityStartTime=\"%s\"\n"                                       \
-    "    availabilityEndTime=\"%s\"\n"                                         \
-    "    minimumUpdatePeriod=\"PT%uiS\"\n"                                     \
+    "    publishTime=\"%s\"\n"                                                 \
+    "    minimumUpdatePeriod=\"PT30S\"\n"                                     \
     "    minBufferTime=\"PT%uiS\"\n"                                           \
-    "    timeShiftBufferDepth=\"PT0H0M0.00S\"\n"                               \
+    "    timeShiftBufferDepth=\"PT5M\"\n"                                 \
+    "    maxSegmentDuration=\"PT2S\"\n"                                        \
     "    suggestedPresentationDelay=\"PT%uiS\"\n"                              \
-    "    profiles=\"urn:hbbtv:dash:profile:isoff-live:2012,"                   \
+    "    profiles=\"urn:hbbtv:dash:profile:isoff-live:2011,"                   \
                    "urn:mpeg:dash:profile:isoff-live:2011\"\n"                 \
     "    xmlns:xsi=\"http://www.w3.org/2011/XMLSchema-instance\"\n"            \
     "    xsi:schemaLocation=\"urn:mpeg:DASH:schema:MPD:2011 DASH-MPD.xsd\">\n" \
@@ -291,8 +292,8 @@ ngx_rtmp_dash_write_playlist(ngx_rtmp_session_t *s)
     "        <SegmentTemplate\n"                                               \
     "            presentationTimeOffset=\"0\"\n"                               \
     "            timescale=\"1000\"\n"                                         \
-    "            media=\"%V%s$Time$.m4v\"\n"                                   \
-    "            initialization=\"%V%sinit.m4v\">\n"                           \
+    "            media=\"%V%s$Time$.m4s\"\n"                                   \
+    "            initialization=\"%V%sinit.m4s\">\n"                           \
     "          <SegmentTimeline>\n"
 
 
@@ -474,7 +475,7 @@ ngx_rtmp_dash_write_init_segments(ngx_rtmp_session_t *s)
 
     /* init video */
 
-    *ngx_sprintf(ctx->stream.data + ctx->stream.len, "init.m4v") = 0;
+    *ngx_sprintf(ctx->stream.data + ctx->stream.len, "init.m4s") = 0;
 
     fd = ngx_open_file(ctx->stream.data, NGX_FILE_RDWR, NGX_FILE_TRUNCATE,
                        NGX_FILE_DEFAULT_ACCESS);
@@ -697,7 +698,7 @@ ngx_rtmp_dash_open_fragment(ngx_rtmp_session_t *s, ngx_rtmp_dash_track_t *t,
     t->mdat_size = 0;
     t->opened = 1;
 
-    if (type == 'v') {
+    if (type == 's') {
         t->sample_mask = NGX_RTMP_MP4_SAMPLE_SIZE|
                          NGX_RTMP_MP4_SAMPLE_DURATION|
                          NGX_RTMP_MP4_SAMPLE_DELAY|
@@ -706,6 +707,18 @@ ngx_rtmp_dash_open_fragment(ngx_rtmp_session_t *s, ngx_rtmp_dash_track_t *t,
         t->sample_mask = NGX_RTMP_MP4_SAMPLE_SIZE|
                          NGX_RTMP_MP4_SAMPLE_DURATION;
     }
+
+    if (type == 's') {
+        t->sample_mask = NGX_RTMP_MP4_SAMPLE_SIZE|
+                         NGX_RTMP_MP4_SAMPLE_DURATION|
+                         NGX_RTMP_MP4_SAMPLE_DELAY|
+                         NGX_RTMP_MP4_SAMPLE_KEY;
+    } else {
+        t->sample_mask = NGX_RTMP_MP4_SAMPLE_SIZE|
+                         NGX_RTMP_MP4_SAMPLE_DURATION;
+    }
+
+
 
     return NGX_OK;
 }
@@ -725,7 +738,7 @@ ngx_rtmp_dash_open_fragments(ngx_rtmp_session_t *s)
         return NGX_OK;
     }
 
-    ngx_rtmp_dash_open_fragment(s, &ctx->video, ctx->id, 'v');
+    ngx_rtmp_dash_open_fragment(s, &ctx->video, ctx->id, 's');
 
     ngx_rtmp_dash_open_fragment(s, &ctx->audio, ctx->id, 'a');
 
